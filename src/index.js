@@ -1,7 +1,10 @@
 import express from "express";
 import slotRoutes from "./routes/slots.js";
+import config from 'config';
+
+const port = config.get('port')
 const app = express()
-const port = 3000
+
 
 app.use('/slots', slotRoutes)
 
