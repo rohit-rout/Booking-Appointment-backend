@@ -6,7 +6,7 @@ const port = config.get('port')
 const app = express()
 
 
-app.use('/slots', slotRoutes)
+app.use('/api', slotRoutes)
 
 app.get('/', (req, res) => {
     res.send('Hello World!')

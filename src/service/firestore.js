@@ -19,8 +19,20 @@ export class FirestoreService {
         FirestoreService.instance = getFirestore();
     }
 
-    readCollectionData(collection) {
-        return FirestoreService.instance.collection(collection).get();
+    readCollectionData(path, filters) {
+        let ref = FirestoreService.instance;
+
+        for (const segment of path) {
+            if (segment.type === 'col') ref = ref.collection(segment.name);
+            else if (segment.type === 'doc') ref = ref.doc(segment.name);
+            else throw new Error('Invalid path structure');
+        }
+
+        for (const filter of filters) {
+            ref = ref.where(filter.field, filter.operator, filter.value);
+        }
+
+        return ref.get();
     }
 
     static getInstance() {

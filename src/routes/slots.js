@@ -4,6 +4,6 @@ import { getSlots } from "../controller/slots.js";
 const router = Router();
 
 
-router.get('/', getSlots)
+router.get('/slots', getSlots)
 
 export default router;
