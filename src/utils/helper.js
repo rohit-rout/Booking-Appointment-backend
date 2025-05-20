@@ -14,7 +14,6 @@ export const formatDateToTimezone = (seconds, timezone) => {
 
 }
 
-
 export const convertDateStringToTimeStamp = (dateString, time, timezone) => {
     const dt = DateTime.fromFormat(`${dateString} ${time}`, 'yyyy-MM-dd h:mm a', { zone: timezone });
     if (!dt.isValid) return new Error('Invalid date');

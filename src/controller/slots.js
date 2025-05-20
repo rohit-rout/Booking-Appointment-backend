@@ -24,6 +24,7 @@ export const getSlots = async (req, res) => {
             { name: collection, type: 'col' },
             { name: 'john', type: 'doc' },
             { name: 'appointments', type: 'col' }
+
         ];
         const data = await db.readCollectionData(path, filters);
 
