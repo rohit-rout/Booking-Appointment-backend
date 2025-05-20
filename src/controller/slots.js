@@ -1,13 +1,12 @@
 import db from "../service/firestore.js";
 import config from 'config';
-import { formatDateToTimezone, getAvailableSlots, getStartEndTimestamps } from "../utils/helper.js";
+import { convertDateStringToTimeStamp, formatDateToTimezone, getAvailableSlots, getStartEndTimestamps } from "../utils/helper.js";
 const collection = config.get('db.collection');
 
 
 export const getSlots = async (req, res) => {
     try {
         const { date, timezone } = req.query;
-
         if (!date || !timezone) {
             res.status(400).send('Please provide date and timezone');
         }
@@ -16,7 +15,7 @@ export const getSlots = async (req, res) => {
 
         const filters = [
             { field: 'appointment', operator: '>=', value: startTimestamp },
-            { field: 'appointment', operator: '<=', value: endTimestamp }
+            { field: 'appointment', operator: '<', value: endTimestamp }
         ];
 
         const path = [
@@ -25,13 +24,10 @@ export const getSlots = async (req, res) => {
             { name: 'appointments', type: 'col' }
         ];
         const data = await db.readCollectionData(path, filters);
-        if (data.empty) return res.status(404).send('No slots found');
 
         let appointments = [];
         data.forEach((doc) => {
             const slot = doc.data();
-            const time = formatDateToTimezone(slot.appointment._seconds, timezone);
-            console.log(time);
             appointments.push(slot.appointment._seconds);
 
         })
@@ -44,3 +40,37 @@ export const getSlots = async (req, res) => {
     }
 
 }
+
+
+export const addSlot = async (req, res) => {
+    try {
+        const { date, time, timezone, email, firstName, phone } = req.body
+
+        if (!date || !time || !timezone) {
+            return res.status(400).send({ success: false, message: 'Missing required fields' });
+        }
+
+        const timestamp = convertDateStringToTimeStamp(date, time, timezone);
+
+        const path = [
+            { name: collection, type: 'col' },
+            { name: 'john', type: 'doc' },
+            { name: 'appointments', type: 'col' }
+        ];
+
+        const newAppointment = {
+            appointment: timestamp,
+            name: firstName,
+            email: email,
+            phone: phone
+        };
+
+        const ref = await db.addDocument(path, newAppointment);
+
+        res.status(201).send({ success: true, id: ref.id, message: 'Appointment added successfully' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ success: false, message: error.message });
+    }
+};

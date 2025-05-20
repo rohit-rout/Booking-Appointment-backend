@@ -1,21 +1,31 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { DateTime } from 'luxon';
 import config from 'config';
-const startTime = config.get('client.START_TIME');
-const endTime = config.get('client.END_TIME');
-const slotDurationMinutes = config.get('client.SLOT_DURATION_MINUTES');
+
+const START_TIME = config.get('client.START_TIME');
+const END_TIME = config.get('client.END_TIME');
+const SLOT_DURATION_MINUTES = config.get('client.SLOT_DURATION_MINUTES');
+const TIMEZONE = config.get('client.TIME_ZONE');
 
 
-export const formatDateToTimezone = (ms, timezone) => {
-    const jsDate = new Date(ms * 1000);
-    return DateTime.fromJSDate(jsDate, { zone: timezone }).toFormat('yyyy-MM-dd HH:mm');
+export const formatDateToTimezone = (seconds, timezone) => {
+    const jsDate = new Date(seconds * 1000).toISOString();
+    return DateTime.fromISO(jsDate, { zone: timezone }).toFormat('yyyy-MM-dd HH:mm');
 
 }
 
 
+export const convertDateStringToTimeStamp = (dateString, time, timezone) => {
+    const dt = DateTime.fromFormat(`${dateString} ${time}`, 'yyyy-MM-dd h:mm a', { zone: timezone });
+    if (!dt.isValid) return new Error('Invalid date');
+    return Timestamp.fromDate(dt.toJSDate());
+}
+
 export const getStartEndTimestamps = (dateString, timezone) => {
-    const start = DateTime.fromISO(dateString, { zone: timezone }).startOf('day').toUTC();
-    const end = DateTime.fromISO(dateString, { zone: timezone }).endOf('day').toUTC();
+    const start = DateTime.fromISO(dateString, { zone: timezone }).startOf('day')
+    const end = start.plus({ days: 1 });
+
+
 
     return {
         startTimestamp: Timestamp.fromDate(start.toJSDate()),
@@ -25,8 +35,8 @@ export const getStartEndTimestamps = (dateString, timezone) => {
 
 export const generateSlots = (dateString, timezone, slotDurationMinutes) => {
 
-    const dayStart = DateTime.fromISO(dateString, { zone: timezone }).set({ hour: startTime, minute: 0 });
-    const dayEnd = DateTime.fromISO(dateString, { zone: timezone }).set({ hour: endTime, minute: 0 });
+    const dayStart = DateTime.fromISO(dateString, { zone: TIMEZONE }).set({ hour: START_TIME, minute: 0 }).setZone(timezone);
+    const dayEnd = DateTime.fromISO(dateString, { zone: TIMEZONE }).set({ hour: END_TIME, minute: 0 }).setZone(timezone);
 
     const allSlots = [];
     let current = dayStart;
@@ -34,6 +44,7 @@ export const generateSlots = (dateString, timezone, slotDurationMinutes) => {
     while (current < dayEnd) {
         const slotStart = current;
         const slotEnd = current.plus({ minutes: slotDurationMinutes });
+        if (slotStart.toISODate() !== dateString) break;
         allSlots.push({ start: slotStart, end: slotEnd });
         current = slotEnd;
     }
@@ -41,11 +52,11 @@ export const generateSlots = (dateString, timezone, slotDurationMinutes) => {
     return allSlots;
 }
 export const getAvailableSlots = (dateString, timezone, appointments) => {
-    const allSlots = generateSlots(dateString, timezone, slotDurationMinutes);
+    const allSlots = generateSlots(dateString, timezone, SLOT_DURATION_MINUTES);
 
     const appointmentWindows = appointments.map(ts => {
-        const start = DateTime.fromJSDate(new Date(ts * 1000), { zone: timezone });
-        const end = start.plus({ minutes: slotDurationMinutes });
+        const start = DateTime.fromISO(new Date(ts * 1000).toISOString(), { zone: timezone });
+        const end = start.plus({ minutes: SLOT_DURATION_MINUTES });
         return { start, end };
     });
 
@@ -57,5 +68,5 @@ export const getAvailableSlots = (dateString, timezone, appointments) => {
         });
     });
 
-    return availableSlots.map(slot => `${slot.start.toFormat('HH:mm')}`);
+    return availableSlots.map(slot => `${slot.start.toFormat('hh:mm a')}`);
 };

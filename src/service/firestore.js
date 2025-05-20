@@ -35,6 +35,18 @@ export class FirestoreService {
         return ref.get();
     }
 
+    addDocument(path, data) {
+        let ref = FirestoreService.instance;
+
+        for (const segment of path) {
+            if (segment.type === 'col') ref = ref.collection(segment.name);
+            else if (segment.type === 'doc') ref = ref.doc(segment.name);
+            else throw new Error('Invalid path structure');
+        }
+
+        return ref.add(data);
+    }
+
     static getInstance() {
         if (!FirestoreService.instance) {
             new FirestoreService();
