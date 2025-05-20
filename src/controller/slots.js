@@ -1,7 +1,9 @@
 import db from "../service/firestore.js";
 import config from 'config';
-import { convertDateStringToTimeStamp, formatDateToTimezone, getAvailableSlots, getStartEndTimestamps } from "../utils/helper.js";
+import { convertDateStringToTimeStamp, formatDateToTimezone, getAvailableSlots, getDateTimeStamp, getStartEndTimestamps } from "../utils/helper.js";
 const collection = config.get('db.collection');
+
+
 
 
 export const getSlots = async (req, res) => {
@@ -74,3 +76,42 @@ export const addSlot = async (req, res) => {
         res.status(500).send({ success: false, message: error.message });
     }
 };
+
+
+export const getSlotsByDate = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        console.log(startDate, endDate);
+        if (!startDate || !endDate) {
+            res.status(400).send('Please provide date and timezone');
+        }
+
+        const startDateTimeStamp = getDateTimeStamp(startDate, true);
+        const endDateTimeStamp = getDateTimeStamp(endDate, false);
+
+        console.log(startDateTimeStamp, endDateTimeStamp);
+
+        const path = [
+            { name: collection, type: 'col' },
+            { name: 'john', type: 'doc' },
+            { name: 'appointments', type: 'col' }
+        ];
+
+        const filters = [
+            { field: 'appointment', operator: '>=', value: startDateTimeStamp },
+            { field: 'appointment', operator: '<', value: endDateTimeStamp }
+        ];
+
+        const data = await db.readCollectionData(path, filters);
+        let slots = [];
+        data.forEach((doc) => {
+            const slot = doc.data();
+            slots.push(formatDateToTimezone(slot.appointment._seconds))
+
+        })
+        res.status(200).send({ success: true, slots: slots });
+    } catch (error) {
+        console.log(error);
+        res.status(500).send({ success: false, error: error.message })
+    }
+}

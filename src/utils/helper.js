@@ -25,27 +25,45 @@ export const getStartEndTimestamps = (dateString, timezone) => {
     const start = DateTime.fromISO(dateString, { zone: timezone }).startOf('day')
     const end = start.plus({ days: 1 });
 
-
-
     return {
         startTimestamp: Timestamp.fromDate(start.toJSDate()),
         endTimestamp: Timestamp.fromDate(end.toJSDate()),
     };
 };
 
+
+export const getDateTimeStamp = (dateString, start) => {
+    let dt = DateTime.fromISO(dateString).startOf('day');
+    if (!start) dt = dt.plus({ days: 1 })
+    return Timestamp.fromDate(dt.toJSDate());
+}
+
 export const generateSlots = (dateString, timezone, slotDurationMinutes) => {
 
-    const dayStart = DateTime.fromISO(dateString, { zone: TIMEZONE }).set({ hour: START_TIME, minute: 0 }).setZone(timezone);
-    const dayEnd = DateTime.fromISO(dateString, { zone: TIMEZONE }).set({ hour: END_TIME, minute: 0 }).setZone(timezone);
+    const previousDayStart = DateTime.fromISO(dateString, { zone: TIMEZONE }).minus({ days: 1 }).set({ hour: START_TIME, minute: 0 }).setZone(timezone);
+    const previousDayEnd = DateTime.fromISO(dateString, { zone: TIMEZONE }).minus({ days: 1 }).set({ hour: END_TIME, minute: 0 }).setZone(timezone);
+    const currentDayStart = DateTime.fromISO(dateString, { zone: TIMEZONE }).set({ hour: START_TIME, minute: 0 }).setZone(timezone);
+    const currentDayEnd = DateTime.fromISO(dateString, { zone: TIMEZONE }).set({ hour: END_TIME, minute: 0 }).setZone(timezone);
 
     const allSlots = [];
-    let current = dayStart;
+    let current = previousDayStart;
 
-    while (current < dayEnd) {
+    while (current < previousDayEnd) {
         const slotStart = current;
         const slotEnd = current.plus({ minutes: slotDurationMinutes });
-        if (slotStart.toISODate() !== dateString) break;
-        allSlots.push({ start: slotStart, end: slotEnd });
+        if (slotStart.toISODate() === dateString) {
+            allSlots.push({ start: slotStart, end: slotEnd });
+        }
+        current = slotEnd;
+    }
+    current = currentDayStart;
+
+    while (current < currentDayEnd) {
+        const slotStart = current;
+        const slotEnd = current.plus({ minutes: slotDurationMinutes });
+        if (slotStart.toISODate() === dateString) {
+            allSlots.push({ start: slotStart, end: slotEnd });
+        }
         current = slotEnd;
     }
 
